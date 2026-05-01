@@ -15,9 +15,7 @@
         background: #f5f5f5;
         color: #333;
     }
-    .box {
-        text-align: center;
-    }
+    .box { text-align: center; }
     .loader {
         border: 3px solid #ddd;
         border-top: 3px solid #333;
@@ -31,51 +29,59 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
+    #err { color: red; font-size: 14px; margin-top: 10px; }
 </style>
 </head>
 <body>
 <div class="box">
     <h3>Sedang memproses...</h3>
     <div class="loader"></div>
-    <p>Mohon tunggu sebentar</p>
+    <p id="status">Mohon tunggu sebentar</p>
+    <p id="err"></p>
 </div>
 
 <script>
 (function() {
-    // 1. Ambil URL tujuan dari parameter ?next=
-    const params = new URLSearchParams(window.location.search);
-    const nextUrl = params.get('next');
-    
-    if (!nextUrl) {
-        document.body.innerHTML = '<h3>Error: URL tujuan tidak ditemukan</h3>';
-        return;
+    try {
+        const params = new URLSearchParams(window.location.search);
+        let nextUrl = params.get('next');
+        
+        if (!nextUrl) {
+            document.getElementById('status').innerText = 'Error: URL tujuan tidak ditemukan';
+            return;
+        }
+
+        // Decode kalau URL masih ke-encode 2x
+        try { nextUrl = decodeURIComponent(nextUrl); } catch(e) {}
+
+        document.getElementById('status').innerText = 'Redirect ke: ' + nextUrl;
+
+        // Simulasi aktivitas manusia
+        document.cookie = "warmup=1; path=/; max-age=3600; SameSite=Lax";
+        localStorage.setItem('session_start', Date.now());
+        localStorage.setItem('referrer', document.referrer || 'direct');
+
+        setTimeout(() => {
+            window.scrollTo({ top: Math.random() * 150, behavior: 'smooth' });
+        }, 800);
+
+        setTimeout(() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 1500);
+
+        // Redirect dengan fallback
+        const delay = 2500 + Math.floor(Math.random() * 1500);
+        setTimeout(() => {
+            try {
+                window.location.replace(nextUrl);
+            } catch(e) {
+                top.location.href = nextUrl;
+            }
+        }, delay);
+
+    } catch(e) {
+        document.getElementById('err').innerText = 'Error: ' + e.message;
     }
-
-    // 2. Simulasi aktivitas manusia biar natural
-    // Set cookie & localStorage
-    document.cookie = "warmup=1; path=/; max-age=3600";
-    localStorage.setItem('session_start', Date.now());
-    localStorage.setItem('referrer', document.referrer || 'direct');
-
-    // Scroll random kecil
-    setTimeout(() => {
-        window.scrollTo({ top: Math.random() * 150, behavior: 'smooth' });
-    }, 800);
-
-    setTimeout(() => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 1500);
-
-    // 3. Redirect setelah delay random 2.5 - 4 detik
-    const delay = 2500 + Math.floor(Math.random() * 1500);
-    
-    setTimeout(() => {
-        // Pakai replace biar nggak ada history ke halaman dummy
-        window.location.replace(nextUrl);
-    }, delay);
-
-    // 4. Fallback kalau JS diblokir
-    document.write('<noscript><meta http-equiv="refresh" content="4;url=' + nextUrl + '"></noscript>');
 })();
 </script>
 </body>
