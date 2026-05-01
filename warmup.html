@@ -1,78 +1,81 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Warming Up...</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loading...</title>
 <style>
-  body { font-family: system-ui; text-align: center; margin-top: 20vh; color: #333; }
-  #log { font-size: 12px; color: #888; margin-top: 20px; }
+    body {
+        font-family: system-ui, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background: #f5f5f5;
+        color: #333;
+    }
+    .box {
+        text-align: center;
+    }
+    .loader {
+        border: 3px solid #ddd;
+        border-top: 3px solid #333;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 20px auto;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
 </style>
 </head>
 <body>
-  <h3>Sedang memproses...</h3>
-  <p id="status">Mohon tunggu sebentar</p>
-  <div id="log"></div>
+<div class="box">
+    <h3>Sedang memproses...</h3>
+    <div class="loader"></div>
+    <p>Mohon tunggu sebentar</p>
+</div>
+
 <script>
-(async function() {
-  const log = (msg) => { document.getElementById('log').innerText = msg; };
-  
-  try {
-    const params = new URLSearchParams(location.search);
-    const next = params.get('next');
-    const tz = params.get('tz') || 'Asia/Jakarta';
-    const lang = params.get('lang') || 'id-ID';
-    const mode = params.get('mode') || 'mobile';
-
-    if (!next) {
-      document.getElementById('status').innerText = "Error: URL tujuan kosong";
-      return;
-    }
-
-    log("Mode: " + mode + " | Next: " + next);
-
-    // Spoof timezone & language
-    Object.defineProperty(navigator, 'language', { get: () => lang });
-    Object.defineProperty(navigator, 'languages', { get: () => [lang, 'en-US'] });
-    Date.prototype.getTimezoneOffset = () => tz === 'Asia/Jakarta' ? -420 : -new Date().getTimezoneOffset();
-
-    // Touch vs Desktop
-    const isDesktop = mode === 'desktop' || !window.TouchEvent;
-    Object.defineProperty(navigator, 'maxTouchPoints', { get: () => isDesktop ? 0 : 5 });
-
-    // Simulasi interaksi
-    if (isDesktop) {
-      document.dispatchEvent(new MouseEvent('mousemove', { clientX: 100, clientY: 150, bubbles: true }));
-      await new Promise(r => setTimeout(r, 600));
-      window.scrollBy(0, 120);
-      await new Promise(r => setTimeout(r, 900));
-    } else {
-      if (window.TouchEvent) {
-        document.dispatchEvent(new TouchEvent('touchstart', { 
-          touches: [{ clientX: 100, clientY: 150 }], bubbles: true 
-        }));
-        await new Promise(r => setTimeout(r, 600));
-        window.scrollTo(0, 150);
-      }
-    }
-
-    log("Redirecting to " + next);
-    await new Promise(r => setTimeout(r, 1000));
+(function() {
+    // 1. Ambil URL tujuan dari parameter ?next=
+    const params = new URLSearchParams(window.location.search);
+    const nextUrl = params.get('next');
     
-    // Redirect dengan fallback
-    try {
-      window.location.replace(next);
-    } catch(e) {
-      top.location.href = next;
+    if (!nextUrl) {
+        document.body.innerHTML = '<h3>Error: URL tujuan tidak ditemukan</h3>';
+        return;
     }
 
-  } catch (e) {
-    document.getElementById('status').innerText = "Error: " + e.message;
-    log(e.stack);
-    // Fallback redirect setelah 3 detik
-    const next = new URLSearchParams(location.search).get('next');
-    if (next) setTimeout(() => top.location.href = next, 3000);
-  }
+    // 2. Simulasi aktivitas manusia biar natural
+    // Set cookie & localStorage
+    document.cookie = "warmup=1; path=/; max-age=3600";
+    localStorage.setItem('session_start', Date.now());
+    localStorage.setItem('referrer', document.referrer || 'direct');
+
+    // Scroll random kecil
+    setTimeout(() => {
+        window.scrollTo({ top: Math.random() * 150, behavior: 'smooth' });
+    }, 800);
+
+    setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 1500);
+
+    // 3. Redirect setelah delay random 2.5 - 4 detik
+    const delay = 2500 + Math.floor(Math.random() * 1500);
+    
+    setTimeout(() => {
+        // Pakai replace biar nggak ada history ke halaman dummy
+        window.location.replace(nextUrl);
+    }, delay);
+
+    // 4. Fallback kalau JS diblokir
+    document.write('<noscript><meta http-equiv="refresh" content="4;url=' + nextUrl + '"></noscript>');
 })();
 </script>
 </body>
