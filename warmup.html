@@ -12,97 +12,95 @@
   <h3>Sedang memproses...</h3>
   <p>Mohon tunggu sebentar</p>
 <script>
-  
 (async function() {
-  const params = new URLSearchParams(location.search);
-  const next = params.get('next');
-  const tz = params.get('tz') || 'Asia/Jakarta';
-  const lang = params.get('lang') || 'id-ID';
-  const mode = params.get('mode') || 'mobile'; // desktop | mobile
+  try {
+    const params = new URLSearchParams(location.search);
+    const next = params.get('next');
+    const tz = params.get('tz') || 'Asia/Jakarta';
+    const lang = params.get('lang') || 'id-ID';
+    const mode = params.get('mode') || 'mobile'; 
 
-  // 1. Spoof timezone & language
-  Object.defineProperty(navigator, 'language', { get: () => lang });
-  Object.defineProperty(navigator, 'languages', { get: () => [lang, 'en-US'] });
+    // 1. Spoof timezone & language
+    Object.defineProperty(navigator, 'language', { get: () => lang });
+    Object.defineProperty(navigator, 'languages', { get: () => [lang, 'en-US'] });
 
-  const tzOffset = tz === 'Asia/Jakarta' ? -420 : -new Date().getTimezoneOffset();
-  Date.prototype.getTimezoneOffset = () => tzOffset;
-  
-  const orig = Intl.DateTimeFormat.prototype.resolvedOptions;
-  Intl.DateTimeFormat.prototype.resolvedOptions = function() {
-    const opts = orig.call(this);
-    opts.timeZone = tz;
-    return opts;
-  };
+    const tzOffset = tz === 'Asia/Jakarta' ? -420 : -new Date().getTimezoneOffset();
+    Date.prototype.getTimezoneOffset = () => tzOffset;
+    
+    const orig = Intl.DateTimeFormat.prototype.resolvedOptions;
+    Intl.DateTimeFormat.prototype.resolvedOptions = function() {
+      const opts = orig.call(this);
+      opts.timeZone = tz;
+      return opts;
+    };
 
-  // 2. Spoof touch & pointer buat desktop
-  if (mode === 'desktop') {
-    // Hapus touch biar keliatan beneran desktop
-    Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 0 });
-    Object.defineProperty(navigator, 'msMaxTouchPoints', { get: () => 0 });
-    window.ontouchstart = undefined;
-    window.ontouchmove = undefined;
-    window.ontouchend = undefined;
-  } else {
-    // Mode mobile, biarkan touch ada
-    Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 5 });
-  }
+    // 2. Spoof touch & pointer
+    const isDesktop = mode === 'desktop' || !window.TouchEvent;
+    if (isDesktop) {
+      Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 0 });
+      Object.defineProperty(navigator, 'msMaxTouchPoints', { get: () => 0 });
+      window.ontouchstart = undefined;
+      window.ontouchmove = undefined;
+      window.ontouchend = undefined;
+    } else {
+      Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 5 });
+    }
 
-  // 3. Spoof canvas noise
-  const getContext = HTMLCanvasElement.prototype.getContext;
-  HTMLCanvasElement.prototype.getContext = function(type, ...args) {
-    const ctx = getContext.call(this, type, ...args);
-    if (type === '2d' && ctx) {
-      const origFill = ctx.fillText;
-      ctx.fillText = function() {
-        this.fillStyle = 'rgba(0,0,0,0.001)';
-        return origFill.apply(this, arguments);
+    // 3. Spoof canvas noise
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    if (getContext) {
+      HTMLCanvasElement.prototype.getContext = function(type, ...args) {
+        const ctx = getContext.call(this, type, ...args);
+        if (type === '2d' && ctx) {
+          const origFill = ctx.fillText;
+          ctx.fillText = function() {
+            this.fillStyle = 'rgba(0,0,0,0.001)';
+            return origFill.apply(this, arguments);
+          }
+        }
+        return ctx;
+      };
+    }
+
+    // 4. Simulasi interaksi
+    document.cookie = "session_warm=true; path=/; max-age=3600; SameSite=Lax";
+    localStorage.setItem('warmup', Date.now());
+
+    if (isDesktop) {
+      // Mode desktop: pakai mouse event
+      document.dispatchEvent(new MouseEvent('mousemove', { clientX: 100, clientY: 150, bubbles: true }));
+      await new Promise(r => setTimeout(r, 600));
+      window.scrollBy(0, 120);
+      await new Promise(r => setTimeout(r, 900));
+      window.scrollTo(0, 0);
+      document.dispatchEvent(new MouseEvent('click', { clientX: 100, clientY: 150, bubbles: true }));
+    } else {
+      // Mode mobile: pakai touch event
+      if (window.TouchEvent) {
+        document.dispatchEvent(new TouchEvent('touchstart', { 
+          touches: [{ clientX: 100, clientY: 150 }], bubbles: true 
+        }));
+        await new Promise(r => setTimeout(r, 600));
+        window.scrollTo(0, Math.random() * 150);
+        await new Promise(r => setTimeout(r, 900));
+        window.scrollTo(0, 0);
+        document.dispatchEvent(new TouchEvent('touchend', { bubbles: true }));
       }
     }
-    return ctx;
-  };
 
-  // 4. Simulasi interaksi sesuai mode
-  document.cookie = "session_warm=true; path=/; max-age=3600; SameSite=Lax";
-  localStorage.setItem('warmup', Date.now());
+    // 5. Redirect
+    if (next) {
+      setTimeout(() => window.location.replace(next), 2200);
+    }
 
-  if (mode === 'desktop') {
-    // Simulasi mouse: hover dikit, scroll pakai wheel
-    const eMove = new MouseEvent('mousemove', { clientX: 100, clientY: 150, bubbles: true });
-    document.dispatchEvent(eMove);
-    
-    await new Promise(r => setTimeout(r, 600));
-    window.scrollBy(0, 120); // scroll kayak pakai mouse wheel
-    
-    await new Promise(r => setTimeout(r, 900));
-    window.scrollTo(0, 0);
-    
-    const eClick = new MouseEvent('click', { clientX: 100, clientY: 150, bubbles: true });
-    document.dispatchEvent(eClick);
-  } else {
-    // Simulasi touch: tap & scroll jari
-    const touchStart = new TouchEvent('touchstart', { 
-      touches: [{ clientX: 100, clientY: 150 }], bubbles: true 
-    });
-    document.dispatchEvent(touchStart);
-    
-    await new Promise(r => setTimeout(r, 600));
-    window.scrollTo(0, Math.random() * 150);
-    
-    await new Promise(r => setTimeout(r, 900));
-    window.scrollTo(0, 0);
-    
-    const touchEnd = new TouchEvent('touchend', { bubbles: true });
-    document.dispatchEvent(touchEnd);
-  }
-
-  // 5. Redirect
-  if (next) {
-    setTimeout(() => {
-      window.location.replace(next);
-    }, 2200);
+  } catch (e) {
+    console.log('Warmup error:', e);
+    // Kalau error, langsung redirect biar gak blank
+    const params = new URLSearchParams(location.search);
+    const next = params.get('next');
+    if (next) window.location.replace(next);
   }
 })();
-
 </script>
 </body>
 </html>
